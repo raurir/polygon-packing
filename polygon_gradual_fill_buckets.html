@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<!-- saved from url=(0045)http://js1k.com/2014-dragons/shim-normal.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>Polygon Gradual Fill Radial</title>
+		<meta charset="utf-8">
+    <style>
+      html, body { margin: 0; padding: 0; border: 0; }
+      #c { display: block; } /* kill scrollbars from hell */
+    </style>
+	</head>
+	<body style="">
+    <canvas id="c"></canvas>
+		<div id="o"></div>
+		<script>
+			var a = document.getElementsByTagName('canvas')[0];
+			var b = document.body;
+      var d = function(e){ return function(){ e.parentNode.removeChild(e); }; }(a);
+      // unprefix some popular vendor prefixed things (but stick to their original name)
+      var AudioContext =
+        window.AudioContext ||
+        window.webkitAudioContext;
+      var requestAnimationFrame =
+        window.requestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function(f){ setTimeout(f, 1000/30); };
+      // stretch canvas to screen size (once, wont onresize!)
+      a.style.width = (a.width = innerWidth) + 'px';
+      a.style.height = (a.height = innerHeight - 50) + 'px';
+
+      var c = a.getContext('2d');
+
+// http://content.gpwiki.org/index.php/Polygon_Collision
+
+// http://www.cs.uu.nl/geobook/
+
+
+var con = console
+
+var sw = a.width;
+var sh = a.height;
+
+
+var shapes = [
+  "8,8 9,8 9,12 10,12 10,9 11,9 11,12 12,12 12,8 13,8 13,13 8,13",
+  "21,8 21,9 17,9 17,10 20,10 20,11 17,11 17,12 21,12 21,13 16,13 16,8",
+  "24,8 24,9 25,9 25,12 24,12 24,13 27,13 27,12 26,12 26,9 27,9 27,8",
+  "32,8 32,9 34,9 34,13 35,13 35,9 37,9 37,8",
+  "40,8 40,13 41,13 41,9 44,9 44,10 41,10 41,11 43,11 44,13 45,13 44,11 45,11 45,8"
+].map(function(v,i ) {
+  var cx = 8 * (i + 1), cy = 8;
+  var nodes = v.split(" ").map(function(n) {
+    var xy = n.split(",");
+    return {x:Number(xy[0] - cx), y:Number(xy[1] - cy)};
+  })
+  return nodes;
+})
+
+var polygons = []
+
+var anim = 0;
+
+
+
+
+
+
+var BUCKET_SIZE = 100;
+
+var cols = Math.ceil(sw / BUCKET_SIZE), rows = Math.ceil(sh / BUCKET_SIZE);
+
+var buckets = [];
+
+
+
+function getBuckets(polygon){
+
+  var minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+
+  for (var s = 0, sl = polygon.length; s < sl; s++ ) {
+    var node = polygon[s];
+    minX = Math.min(minX, node.x);
+    minY = Math.min(minY, node.y);
+    maxX = Math.max(maxX, node.x);
+    maxY = Math.max(maxY, node.y);
+  }
+  
+  // c.fillStyle = "red";
+  // c.fillRect( minX, minY, maxX - minX, maxY - minY);
+
+  var bucketFirstX = Math.floor(minX / BUCKET_SIZE);
+  var bucketLastX = Math.floor(maxX / BUCKET_SIZE);
+
+  var bucketFirstY = Math.floor(minY / BUCKET_SIZE);
+  var bucketLastY = Math.floor(maxY / BUCKET_SIZE);
+
+  var ids = [];
+
+  for (var x = bucketFirstX; x <= bucketLastX; x++) {
+    for (var y = bucketFirstY; y <= bucketLastY; y++) {
+      var num = x + y * cols;
+      var bucket = getBucket(num);
+      if (bucket) {
+        // bucket.draw();
+        ids.push(num);
+      }
+    }
+  }
+
+  return ids;
+
+  // con.log(minX, maxX, minY, maxY, bucketFirstX, bucketLastX);
+
+
+}
+
+function addToBuckets(item){
+  var ids = getBuckets(item.path);
+  for ( var i = 0, il = ids.length; i < il; i++) {
+    var num = ids[i];
+    buckets[num].addItem(item);
+  }
+}
+
+
+
+function createBucket(num) {
+
+  var col = num % cols;
+  var row = Math.floor(num / cols);
+
+  var bucket = {
+    col: col,
+    row: row,
+    x: col * BUCKET_SIZE,
+    y: row * BUCKET_SIZE,
+    contents: [],
+    addItem: function(item) { 
+      this.contents.push(item)
+    },
+    draw: function() {
+      c.fillStyle = 'rgba(0,0,0,0.9)'
+      c.fillRect(this.x, this.y, BUCKET_SIZE + 1, BUCKET_SIZE + 1);
+    },
+    getItems: function () {
+      return this.contents;
+    }
+  }
+
+  bucket.draw();
+
+  buckets[num] = bucket;
+
+}
+
+function getBucket(num) {
+  return buckets[num];
+}
+
+
+function getBucketsSurrounding(bucketId) {
+  var ids = [ 
+    -cols + bucketId - 1, 
+    -cols + bucketId, 
+    // -cols + bucketId + 1,
+
+    bucketId - 1, 
+    bucketId, 
+    // bucketId + 1,
+
+    // cols + bucketId - 1, 
+    // cols + bucketId, 
+    // cols + bucketId + 1
+  ]
+
+  return ids;
+}
+
+
+for (var num = 0, numMax = cols * rows; num < numMax; num++) {
+  createBucket(num);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function vectorSubtract(vec1, vec2){
+  // con.log("vectorSubtract",vec1, vec2)
+  return {
+    x: vec1.x - vec2.x,
+    y: vec1.y - vec2.y
+  }
+}
+
+function vectorAdd(vec1, vec2){
+  // con.log("vectorSubtract",vec1, vec2)
+  return {
+    x: vec1.x + vec2.x,
+    y: vec1.y + vec2.y
+  }
+}
+
+function vectorMultiply(vec, m) {
+  return {
+    x: vec.x * m,
+    y: vec.y * m
+  }
+}
+
+function determinant(vec1, vec2){
+  // con.log("edgeIntersection",vec1, vec2)
+  return vec1.x * vec2.y - vec1.y * vec2.x;
+}
+
+function edgeIntersection(a, b, c, d){
+  //one edge is a-b, the other is c-d
+
+  // con.log("edgeIntersection",a,b,c,d)
+
+  var det = determinant(vectorSubtract(b, a), vectorSubtract(c, d));
+  var t   = determinant(vectorSubtract(c, a), vectorSubtract(c, d)) / det;
+  var u   = determinant(vectorSubtract(b, a), vectorSubtract(c, a)) / det;
+
+
+  if (isNaN(t) || (t < 0) || (u < 0) || (t > 1) || (u > 1)) {
+    return false;
+  } else {
+
+    var g = vectorMultiply(a, 1 - t);
+    var h = vectorMultiply(b, t);
+
+    // con.log(a,b,t,g,h, det)
+    return vectorAdd(g, h);
+
+    return vectorAdd( vectorMultiply(a, 1 - t), vectorMultiply(b, t));
+
+  }
+}
+
+var imgd
+
+function pointInPolygon(point, poly) {
+
+  var x = ~~point.x;
+  var y = ~~point.y;
+
+  
+  var pixels = imgd.data;
+
+  var pixel = (y * sw + x) * 4;
+
+  // con.log("pointInPolygon", ~~x, ~~y)
+
+  return pixels[pixel] > 0;
+
+  // pixels[i  ] = 255 - pix[i  ]; // red
+  // pixels[i+1] = 255 - pix[i+1]; // green
+  // pixels[i+2] = 255 - pix[i+2]; // blue
+
+
+
+
+  // return false
+
+  // var x = point.x;
+  // var y = point.y;
+
+  // var polySides = poly.length;
+
+  // var i, j = polySides - 1;
+  // var oddNodes = false;
+
+  // for (i=0; i<polySides; i++) {
+  //   if ((poly[i].y< y && poly[j].y>=y ||   poly[j].y< y && poly[i].y>=y) &&  (poly[i].x<=x || poly[j].x<=x)) {
+  //     oddNodes ^=(poly[i].x+(y-poly[i].y)/(poly[j].y-poly[i].y)*(poly[j].x-poly[i].x)<x);
+  //   }
+  //   j=i;
+  // }
+
+  // return oddNodes;
+}
+
+
+
+
+function polygonOverlap( p1, p2 ) {
+
+  // con.log(p1,p2)
+
+  var intersection = false;
+  var inside = false;
+
+  var calcs = 0;
+
+  for (var n = 0, nl = p1.length; n < nl && intersection === false; n++) {
+
+    for (var o = 0, ol = p2.length; o < ol && intersection === false; o++) {
+
+      var line1Node1 = p1[n];
+      var line1Node2 = p1[(n + 1) % nl];
+
+      var line2Node1 = p2[o];
+      var line2Node2 = p2[(o + 1) % ol];
+
+      calcs++;
+
+      intersection = edgeIntersection(line1Node1, line1Node2, line2Node1, line2Node2);
+      // con.log(intersection, n,o)
+
+    }
+
+  }
+
+  // if (intersection === false) {
+  //   inside = pointInPolygon(p2[0], p1);
+  //   // con.log(inside)
+  // }
+
+  if ( intersection === false && inside === false ) {
+    return false
+  } else {
+    return true
+  }
+
+}
+
+
+var prevBucket = 0;
+
+var t = new Date().getTime()
+
+
+function newPosition() {
+
+
+
+  if (anim < -200) {
+
+    var x = 100 + Math.random() * (sw - 200);
+    var y = 100 + Math.random() * (sh - 200);
+    var minSize = 2;
+
+  } else {
+
+    if ( new Date().getTime() - t > 1000 ) {
+
+      con.log( new Date().getTime() - t )
+
+      prevBucket++;
+      t = new Date().getTime()
+    }
+
+    var bucketId = prevBucket;//Math.floor(polygons.length / 50);
+
+
+
+
+    prevBucket = bucketId;
+
+    var bucket = getBucket(bucketId);
+    var x = bucket.x + Math.random() * BUCKET_SIZE;
+    var y = bucket.y + Math.random() * BUCKET_SIZE;
+    var minSize = 0.5;
+
+  }
+
+  var dy = y - sh / 2;
+  var dx = x - sw / 2;
+
+  return {
+    bucketId: bucketId,
+    x: x,
+    y: y,
+
+    rotation: Math.random() > 1.7 ? Math.random() * Math.PI : Math.atan(dy / dx) + Math.PI / 2 + (dx < 0 ? Math.PI : 0),
+
+    shape: shapes[ ~~(Math.random() * shapes.length) ],
+
+    // size: 1,
+    // size: (polygons.length > 700 ? 0.4 : 1) * ( 2 + Math.random() * (dy * dy + dx * dx) / 10000),
+    size: (minSize + Math.random() * Math.sqrt(dy * dy + dx * dx) / 100),
+    // size: 2 + Math.sqrt(dy * dy + dx * dx) / 100,
+    //size: 2 + (5 + Math.random() * 20),
+
+    // colour: "hsla(" + ~~(Math.random() * 360) + ",50%, 50%, 1)"
+    colour: "hsla(100," + ~~(Math.random() * 50 + 10) + "%, " + ~~(Math.random() * 50 + 40) + "%, 1)"
+  }
+}
+
+function calcGlyph() {
+
+    var n = newPosition();
+
+    var shape = n.shape;
+    var x = n.x;
+    var y = n.y;
+    var colour = n.colour;
+    var size = n.size;
+    var rotation = n.rotation;
+
+
+    var polygon = {
+      bucketId: n.bucketId,
+      colour: colour,
+      path: [], 
+    };
+
+    for ( var s = 0, sl = shape.length; s < sl; s++ ) {
+      var node = shape[s];
+
+      var cx = node.x * size;
+      var cy = node.y * size;
+
+      polygon.path[s] = {
+        x: x + Math.cos(rotation) * cx - Math.sin(rotation) * cy,
+        y: y + Math.sin(rotation) * cx + Math.cos(rotation) * cy
+      }
+    }
+
+    // drawGlyph(polygon.path, polygon.colour);
+
+    return polygon;
+
+}
+
+function drawGlyph(polygon, colour) {
+    c.beginPath();
+    c.fillStyle = colour;
+    for (s = 0, sl = polygon.length; s < sl; s++ ) {
+      var node = polygon[s];
+      c.lineTo( node.x, node.y )
+    }
+    c.closePath();
+    c.fill();
+}
+
+
+
+
+function generateGlyph() {
+
+  var newPoly = calcGlyph( );
+
+  var intersection = false;
+
+  var bucketIDs = [newPoly.bucketId];//getBucketsSurrounding(newPoly.bucketId);
+
+  // con.log(bucketIDs.length)
+
+  for ( var i = 0, il = bucketIDs.length; i < il && intersection === false; i++ ) {
+    var id = bucketIDs[i];
+    var bucket = getBucket(id);
+
+    if (bucket) {
+
+      // con.log(bucket)
+
+      var bucketPolygons = bucket.getItems();
+
+      // con.log(bucketPolygons.length);
+
+      for ( var p = 0, pl = bucketPolygons.length; p < pl && intersection === false; p++) {
+
+        intersection = polygonOverlap( bucketPolygons[p].path, newPoly.path );
+
+        // if (intersection) {
+        //   c.fillStyle = "#000"
+        //   c.beginPath();
+        //   c.arc(intersection.x, intersection.y, 4, 0, 2 * Math.PI, false);
+        //   c.fill();
+        // }
+
+      }
+
+    }
+
+
+
+  }
+
+
+  if (!intersection) {
+    addToBuckets(newPoly);
+    polygons.push(newPoly)
+    drawGlyph(newPoly.path, newPoly.colour);
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function r() {
+
+  var now = new Date().getTime()
+
+  anim++;
+
+  // a.width = a.width
+
+  // imgd = c.getImageData(0, 0, sw, sh);
+
+  for ( p = 0, pl = 510; p < pl; p++) {
+    generateGlyph();
+  }
+
+
+  // for ( var p = 0, pl = polygons.length; p < pl; p++) {
+  //   drawGlyph(polygons[p].path, polygons[p].colour)
+  // }
+
+
+  var calctime = new Date().getTime() - now;
+
+
+  var out = document.getElementById('o');
+  out.innerHTML = anim + " " + polygons.length + " " +  calctime 
+
+
+  // if ( anim < 5000 ) {
+    requestAnimationFrame(r);
+    // setTimeout(r, 100)
+  // }
+}
+r()
+
+
+
+		</script>
+	
+
+</body></html>

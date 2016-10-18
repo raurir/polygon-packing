@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<!-- saved from url=(0045)http://js1k.com/2014-dragons/shim-normal.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>Polygon Overlap</title>
+		<meta charset="utf-8">
+    <style>
+      html, body { margin: 0; padding: 0; border: 0; }
+      #c { display: block; } /* kill scrollbars from hell */
+    </style>
+	</head>
+	<body style="">
+    <canvas id="c"></canvas>
+		<div id="o"></div>
+		<script>
+			var a = document.getElementsByTagName('canvas')[0];
+			var b = document.body;
+      var d = function(e){ return function(){ e.parentNode.removeChild(e); }; }(a);
+      // unprefix some popular vendor prefixed things (but stick to their original name)
+      var AudioContext =
+        window.AudioContext ||
+        window.webkitAudioContext;
+      var requestAnimationFrame =
+        window.requestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function(f){ setTimeout(f, 1000/30); };
+      // stretch canvas to screen size (once, wont onresize!)
+      a.style.width = (a.width = innerWidth) + 'px';
+      a.style.height = (a.height = innerHeight - 50) + 'px';
+
+      var c = a.getContext('2d');
+
+// http://content.gpwiki.org/index.php/Polygon_Collision
+
+// http://www.cs.uu.nl/geobook/
+
+
+con = console
+
+sw = a.width;
+sh = a.height;
+
+mx = sw /2
+my = sh /2
+
+window.addEventListener("mousemove", function(e) { 
+  mx = e.x
+  my = e.y
+})
+
+window.addEventListener("touchmove", function(e) {
+  if (!e) e = event;
+  e.preventDefault();
+  mx = e.targetTouches[0].pageX;
+  my = e.targetTouches[0].pageY;
+  // len = e.targetTouches.length;
+  // for (i = 0; i < len; i++) {
+  //     canX[i] = e.targetTouches[i].pageX - can.offsetLeft;
+  //     canY[i] = e.targetTouches[i].pageY - can.offsetTop;
+  // }
+
+})
+
+var shapes = {
+  t: "00101141421213434404",
+  a: "004045050222231314343101",
+  c: "0040411114444505"
+}
+
+for ( var s in shapes) {
+  var str = shapes[s].split("");
+  var arr = []
+  for (var l = 0; l < str.length; l += 2 ) {
+    arr.push({x:Number(str[l]), y:Number(str[l+1])}) 
+  }
+  shapes[s] = arr;
+}
+// con.log(shapes)
+
+function vectorSubtract(vec1, vec2){
+  // con.log("vectorSubtract",vec1, vec2)
+  return {
+    x: vec1.x - vec2.x,
+    y: vec1.y - vec2.y
+  }
+}
+
+function vectorAdd(vec1, vec2){
+  // con.log("vectorSubtract",vec1, vec2)
+  return {
+    x: vec1.x + vec2.x,
+    y: vec1.y + vec2.y
+  }
+}
+
+function vectorMultiply(vec, m) {
+  return {
+    x: vec.x * m,
+    y: vec.y * m
+  }
+}
+
+function determinant(vec1, vec2){
+  // con.log("edgeIntersection",vec1, vec2)
+  return vec1.x * vec2.y - vec1.y * vec2.x;
+}
+function edgeIntersection(a, b, c, d){
+  //one edge is a-b, the other is c-d
+
+  // con.log("edgeIntersection",a,b,c,d)
+
+  var det = determinant(vectorSubtract(b, a), vectorSubtract(c, d));
+  var t   = determinant(vectorSubtract(c, a), vectorSubtract(c, d)) / det;
+  var u   = determinant(vectorSubtract(b, a), vectorSubtract(c, a)) / det;
+
+
+  if (isNaN(t) || (t < 0) || (u < 0) || (t > 1) || (u > 1)) {
+    return false;
+  } else {
+
+    var g = vectorMultiply(a, 1 - t);
+    var h = vectorMultiply(b, t);
+
+    // con.log(a,b,t,g,h, det)
+    return vectorAdd(g, h);
+
+    return vectorAdd( vectorMultiply(a, 1 - t), vectorMultiply(b, t));
+
+  }
+}
+
+function polygonOverlap( p1, p2 ) {
+
+  // con.log(p1,p2)
+
+  var intersection = false;
+
+  var calcs = 0;
+
+  for (var n = 0, nl = p1.length; n < nl && intersection === false; n++) {
+
+    for (var o = 0, ol = p2.length; o < ol && intersection === false; o++) {
+
+      var line1Node1 = p1[n];
+      var line1Node2 = p1[(n + 1) % nl];
+
+      var line2Node1 = p2[o];
+      var line2Node2 = p2[(o + 1) % ol];
+
+      calcs++;
+
+      intersection = edgeIntersection(line1Node1, line1Node2, line2Node1, line2Node2);
+      // con.log(intersection, n,o)
+
+    }
+
+  }
+
+  return intersection
+
+}
+
+var polygons = []
+
+
+
+function newPosition() {
+
+  var num = anim;
+
+  var x = (num * 20) % sw;                 // Math.random() * sw;
+  var y = 20 + Math.floor(num / (sw / 20) ) * 50;    // * sh //Math.random() * sh;
+
+
+  // var x = Math.random() * sw;
+  // var y = Math.random() * sh;
+
+  var dy = y - sh / 2;
+  var dx = x - sw / 2;
+
+  return {
+    x: x,
+    y: y,
+
+    // rotation: Math.random() * Math.PI,
+    // rotation: Math.atan(dy / dx),
+    rotation: 0,
+
+    shape: shapes[ ["a","t","c"][~~(Math.random() * 3)] ],
+
+    // size: 2 + Math.random() * (dy * dy + dx * dx) / 10000,
+    // size: 2 + Math.sqrt(dy * dy + dx * dx) / 100,
+    size: 2 + (5 + Math.random() * 20),
+
+    colour: "rgba(0, 0, 200, 0.5)"
+  }
+}
+
+function calcGlyph() {
+
+    var n = newPosition();
+
+    var shape = n.shape;
+    var x = n.x;
+    var y = n.y;
+    var colour = n.colour;
+    var size = n.size;
+    var rotation = n.rotation
+
+    var polygon = [];
+
+    for ( var s = 0, sl = shape.length; s < sl; s++ ) {
+      var node = shape[s];
+
+      var cx = node.x * size;
+      var cy = node.y * size;
+
+      polygon[s] = {
+        x: x + Math.cos(rotation) * cx - Math.sin(rotation) * cy,
+        y: y + Math.sin(rotation) * cx + Math.cos(rotation) * cy
+      }
+    }
+
+    drawGlyph(polygon, colour);
+
+    return polygon;
+
+}
+
+function drawGlyph(polygon, colour) {
+    c.beginPath();
+    c.fillStyle = colour;
+    for (s = 0, sl = polygon.length; s < sl; s++ ) {
+      var node = polygon[s];
+      c.lineTo( node.x, node.y )
+    }
+    c.closePath();
+    c.fill();
+}
+
+
+
+var positions = [];
+
+var anim = 0;
+
+
+
+function generateGlyph() {
+
+  var newPoly = calcGlyph();
+
+  var intersection = false;
+
+  for ( var p = 0, pl = polygons.length; p < pl && intersection === false; p++) {
+
+    // con.log("polygons", polygons[p])
+
+    intersection = polygonOverlap( polygons[p], newPoly );
+
+    if (intersection) {
+      c.fillStyle = "#000"
+      c.beginPath();
+      c.arc(intersection.x, intersection.y, 4, 0, 2 * Math.PI, false);
+      c.fill();
+    }
+
+  }
+  if (intersection) {
+
+  } else {
+    polygons.push(newPoly)
+  }
+
+}
+
+
+function r() {
+
+  var now = new Date().getTime()
+
+  anim++;
+
+  a.width = a.width
+
+  for ( var p = 0, pl = polygons.length; p < pl; p++) {
+    drawGlyph(polygons[p], "blue")
+  }
+
+  for ( var p = 0, pl = 50; p < pl; p++) {
+    generateGlyph();
+  }
+
+  var calctime = new Date().getTime() - now;
+
+
+  var out = document.getElementById('o');
+  out.innerHTML = polygons.length + " " +  calctime 
+
+
+  requestAnimationFrame(r);
+  // setTimeout(r, 100)
+}
+r()
+
+
+
+		</script>
+	
+
+</body></html>

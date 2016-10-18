@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- saved from url=(0045)http://js1k.com/2014-dragons/shim-normal.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>JS1k, [COMPO] demo submission [ID]</title>
+		<meta charset="utf-8">
+    <style>
+      html, body { margin: 0; padding: 0; border: 0; }
+      #c { display: block; } /* kill scrollbars from hell */
+    </style>
+	</head>
+	<body style="">
+		<canvas id="c"></canvas>
+		<script>
+			var a = document.getElementsByTagName('canvas')[0];
+			var b = document.body;
+      var d = function(e){ return function(){ e.parentNode.removeChild(e); }; }(a);
+      // unprefix some popular vendor prefixed things (but stick to their original name)
+      var AudioContext =
+        window.AudioContext ||
+        window.webkitAudioContext;
+      var requestAnimationFrame =
+        window.requestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function(f){ setTimeout(f, 1000/30); };
+      // stretch canvas to screen size (once, wont onresize!)
+      a.style.width = (a.width = innerWidth) + 'px';
+      a.style.height = (a.height = innerHeight) + 'px';
+
+      var c = a.getContext('2d');
+
+
+con = console
+
+
+sw = a.width;
+sh = a.height;
+
+
+// mx = sw /2
+// my = sh /2
+
+// window.addEventListener("mousemove", function(e) { 
+//   // console.log(e)
+//   mx = e.x
+//   my = e.y
+
+//   // dx = mx - sw / 2
+//   // dy = my - sh / 2
+//   // angle = Math.atan(dy/dx) + (dx < 0 ? Math.PI : 0)
+
+//   // distance = Math.sqrt(dx * dx + dy * dy)/ 100
+
+//   // drawGlyph(angle, distance);
+// })
+
+// window.addEventListener("mousedown", function(e) { 
+//   // console.log(e)
+//   mx = e.x
+//   my = e.y
+
+//   dx = mx - sw / 2
+//   dy = my - sh / 2
+//   angle = Math.atan(dy/dx) + (dx < 0 ? Math.PI : 0)
+
+//   distance = Math.sqrt(dx * dx + dy * dy)/ 100
+
+//   drawGlyph(angle, distance);
+// })
+
+
+
+function drawGlyph(angle, distance) {
+
+
+    var rings = 19;
+
+    for ( var j = 0; j < rings; j++ ) {
+
+      base = Math.pow(1.5, (j + 1) )
+
+      d = base + distance * base;
+
+      // con.log(i,j,base, d)
+
+      x = sw / 2 + Math.cos(angle) * d;
+      y = sh / 2 + Math.sin(angle) * d;
+
+      size = base / 20;// d / 50; //Math.tan(angle) * distance / 10000;//(distance * distance) / 100000
+      size = d / 20
+      c.fillStyle = "hsla(" + ~~(j / rings * 300) + ",100%, 30%, 1)"
+
+      // c.fillRect(x-2 * size,y-2 * size ,4* size,4* size);
+
+      c.beginPath();
+      c.arc(x, y, size * 3, 0, 2 * Math.PI, false);
+      // c.fillStyle = 'green';
+      c.fill();
+
+    }
+}
+
+p = 0;
+
+function r() {
+
+  a.width = a.width
+
+  p++;
+
+  dots = 20
+
+  tunnel = 0;//Math.sin(p/10) * 20
+
+  for ( var i = 0; i < dots; i++ ) {
+
+    // angle = Math.random() * Math.PI * 2;
+    angle = p / 100 + i / dots * Math.PI * 2;
+    // angle = Math.random() * Math.PI * 2;
+    
+    // distance = Math.random() * sw / 2 / 10;
+    //distance = (Math.sin(3 * i / dots * Math.PI * 2) + 1) / 2;
+    distance = tunnel +  (Math.sin(3 * i / dots * Math.PI * 2) + 1 + Math.cos(p / 20 + 2 * i / dots * Math.PI * 2) + 1) / 4;
+    // distance = i / dots;//Math.random();
+
+    drawGlyph(angle, distance);
+  }
+
+  requestAnimationFrame(r);
+}
+r()
+
+
+
+// end of submission //
+		</script>
+	
+
+</body></html>
